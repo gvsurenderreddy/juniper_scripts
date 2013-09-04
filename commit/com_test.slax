@@ -1,0 +1,117 @@
+version 1.0;
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+import "../import/junos.xsl";
+
+match configuration {
+    var $pim_node = protocols/pim;
+    var $ospf_node = protocols/ospf;
+    var $ospf3_node = protocols/ospf3;
+    var $mpls_node = protocols/mpls;
+    var $rsvp_node = protocols/rsvp;
+    var $ldp_node = protocols/ldp;
+    for-each(interfaces/interface/unit[apply-macro/name == "CORE"]) {
+        var $intf_phy_name = ../name;
+        var $intf_unit = ./name;
+        var $ospf_cost = {
+            if(not(jcs:empty(apply-macro/data[name == "osfp-cost"]))) {
+                expr apply-macro/data[name == "osfp-cost"]/value;
+            }
+            else {
+                expr 0;
+            }
+        }
+        var $intf_name = concat($intf_phy_name, '.', $intf_unit);
+        <xnm:warning> {
+            <message> $intf_name;
+        }
+        /* Turn ON MPLS @ core intf */
+        if (jcs:empty($mpls_node/interface[name==$intf_name]) && jcs:empty($mpls_node/interface[name=="all"])) {
+            <xnm:warning> {
+                <message> "MPLS doesnt configured on " _ $intf_name _ " interface. Turning it ON";
+            }
+            var $content = {
+                <interface> {
+                    <name> $intf_name;
+                }
+            }
+            call jcs:emit-change($dot = $mpls_node,$content);
+        }
+        /* Turn ON OSPF @ core intf */
+        if (jcs:empty($ospf_node/area[name="0.0.0.0"]/interface[name==$intf_name])) {
+            <xnm:warning> {
+                <message> "OSPF doesnt configured on " _ $intf_name _ " interface. Turning it ON";
+            }
+            var $content = {
+                <area> {
+                    <name> "0.0.0.0";
+                    <interface> {
+                        <name> $intf_name;
+                        <interface-type> "p2p";
+                    }
+                }
+            }
+            call jcs:emit-change($dot = $ospf_node, $content);
+        }
+
+        /* Turn OSPF3 @ core intf */
+        if (jcs:empty($ospf3_node/area[name="0.0.0.0"]/interface[name==$intf_name])) {
+            <xnm:warning> {
+                <message> "OSPF3 doesnt configured on " _ $intf_name _ " interface. Turning it ON";
+            }
+            var $content = {
+                <area> {
+                    <name> "0.0.0.0";
+                    <interface> {
+                        <name> $intf_name;
+                        <interface-type> "p2p";
+                    }
+                }
+            }
+            call jcs:emit-change($dot = $ospf3_node, $content);
+        }
+
+        /* Turn ON LDP @ core intf */
+        if (jcs:empty($ldp_node/interface[name==$intf_name]) && jcs:empty($ldp_node/interface[name=="all"])) {
+            <xnm:warning> {
+                <message> "LDP doesnt configured on " _ $intf_name _ " interface. Turning it ON";
+            }
+            var $content = {
+                <interface> {
+                    <name> $intf_name;
+                }
+            }
+            call jcs:emit-change($dot = $ldp_node, $content);
+        }
+
+        /* Turn ON RSVP @ core intf */
+        if (jcs:empty($rsvp_node/interface[name==$intf_name]) && jcs:empty($rsvp_node/interface[name=="all"])) {
+            <xnm:warning> {
+                <message> "RSVP doesnt configured on " _ $intf_name _ " interface. Turning it ON";
+            }
+            var $content = {
+                <interface> {
+                    <name> $intf_name;
+                }
+            }
+            call jcs:emit-change($dot = $rsvp_node, $content);
+        }
+
+        /* Turn ON PIM @ core intf */
+        if (jcs:empty($pim_node/interface[name==$intf_name]) && jcs:empty($pim_node/interface[name=="all"])) {
+            <xnm:warning> {
+                <message> "PIM doesnt configured on " _ $intf_name _ " interface. Turning it ON";
+            }
+            var $content = {
+                <interface> {
+                    <name> $intf_name;
+                    <mode> "sparse";
+                }
+            }
+            call jcs:emit-change($dot = $pim_node, $content);
+        }
+
+    }
+}
+
